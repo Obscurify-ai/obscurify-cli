@@ -1,7 +1,7 @@
 {
   "name": "@obscurify/cli",
-  "version": "0.1.0",
-  "description": "Make an Obscurify account and get its API key from your terminal. Your account code is made on your machine and never sent.",
+  "version": "0.2.0",
+  "description": "The Obscurify jobs that run on your machine: sign up (your account code never leaves it), get your API key, deposit privately with blind vouchers, take affiliate credit.",
   "type": "module",
   "bin": {
     "obscurify": "bin/obscurify.mjs"
@@ -32,6 +32,8 @@
     "obscurify",
     "api-key",
     "signup",
+    "blind-signatures",
+    "privacy",
     "openai-compatible"
   ]
 }
