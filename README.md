@@ -26,7 +26,7 @@ npx -y @obscurify/cli api-key
 
 The account code is made here, from your computer's random number generator, and is never sent anywhere. Obscurify only gets its **login key**: Argon2id of the code (salt `obscurify-code-v1`, 64 MiB, 8 passes), then HMAC-SHA256 of the word `login`. The login key can't be turned back into the code. That matters because your encrypted chat history is locked with keys made from the code, so not even Obscurify can open it.
 
-All of it is in [`lib/account.mjs`](lib/account.mjs), about 60 lines, using the audited [`@noble/hashes`](https://github.com/paulmillr/noble-hashes) and nothing else. The test (`npm test`) runs it against a server through a recording proxy and checks that the code is never among the bytes sent.
+All of it is in [`lib/account.mjs`](lib/account.mjs), about 60 lines, using the audited [`@noble/hashes`](https://github.com/paulmillr/noble-hashes) and nothing else. `npm test` checks known answers; `npm run e2e` runs it against a server through a recording proxy and checks that the code is never among the bytes sent.
 
 ## Options
 

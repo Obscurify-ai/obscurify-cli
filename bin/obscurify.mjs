@@ -10,8 +10,10 @@ Your account code is made on this machine and never sent anywhere. Obscurify onl
 gets its login key, a one-way key made from it.
 
 Usage:
-  npx -y @obscurify/cli signup     Make a new account: prints its account code and API key
-  npx -y @obscurify/cli api-key    Get the API key of an account you have (asks for its code)
+  npx -y @obscurify/cli signup     Make a new account. Prints its account code (what you
+                                   sign in with: keep it) and its API key (sk-obs1_...)
+  npx -y @obscurify/cli api-key    Print the API key (sk-obs1_...) of an account you have.
+                                   Asks for the account's code; the code isn't sent
 
 Options:
   --accept-terms   Accept the Terms of Service (https://obscurify.ai/terms) without asking
