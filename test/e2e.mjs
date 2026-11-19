@@ -122,7 +122,13 @@ if (!sqlCommand) {
   check('the balance went up by $7.00', Math.round((Number(after.balance) - Number(before.balance)) * 100) === 700, JSON.stringify([before, after]));
   writeFileSync(wallet, copy);
   const again = await obscurify(['vouchers', 'redeem', '--now'], undefined, env);
-  check('a voucher can only be spent once', /2 already used/.test(again.err), again.err);
+  check('a voucher can only be spent once', /2 vouchers were already used/.test(again.err), again.err);
+  // Redeeming by account code instead of API key: same account, the code isn't sent.
+  writeFileSync(wallet, copy);
+  const byCodeMark = sent.length;
+  const byCode = await obscurify(['vouchers', 'redeem', '--now'], undefined, { OBSCURIFY_ACCOUNT_CODE: made.account_code });
+  check('redeem takes the account code too', /already used/.test(byCode.err) && /Account balance/.test(byCode.err), byCode.out + byCode.err);
+  check('without sending the code', sent.slice(byCodeMark).every((r) => !r.includes(made.account_code) && !r.includes(made.account_code.replace(/-/g, ''))));
 
   // The usual way: buy waits, and collects as soon as the payment confirms.
   writeFileSync(wallet, JSON.stringify({ orders: [], batches: {}, vouchers: [] }));

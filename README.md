@@ -21,7 +21,7 @@ The account code is made here and never sent anywhere. Obscurify only gets a one
 `POST /deposits` puts a payment straight on your account, so we know which account it funded. Blind vouchers don't:
 
 1. `vouchers buy [DOLLARS] --pay btc|lightning|xmr|eth|usdc|usdt` opens an order with no account attached and shows where to send the payment. It waits, and once the payment confirms it makes fresh vouchers here, has Obscurify sign them **blind** (it signs without seeing them), and unblinds them here. Obscurify never sees a finished voucher before it is redeemed, so it can't tell which payment it came from.
-2. `vouchers redeem` deposits them into an account (its API key from `OBSCURIFY_API_KEY`, or typed when asked). Each voucher waits a random 5 to 60 minutes after it was made, so the payment and the deposit can't be matched by time; `--wait` keeps going until all are in, `--now` skips the wait.
+2. `vouchers redeem` deposits them into an account's balance. It asks which account: give its API key (`sk-obs1_...`) or its account code (turned into the API key here; the code isn't sent). `OBSCURIFY_API_KEY` or `OBSCURIFY_ACCOUNT_CODE` skips the question. The API key is the better choice for scripts: the account code also unlocks your encrypted chat history, so keep it in as few places as possible. Each voucher waits a random 5 to 60 minutes after it was made, so the payment and the deposit can't be matched by time; `--wait` keeps going until all are in, `--now` skips the wait.
 
 `vouchers collect` picks up payments made later (an address takes any number of payments for an hour) or a `buy` you stopped waiting for. `vouchers list` shows what you hold. Card vouchers need Stripe's card form, so they're on https://obscurify.ai/account.
 

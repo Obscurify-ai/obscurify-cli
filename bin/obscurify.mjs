@@ -25,10 +25,12 @@ Private deposits (blind vouchers: we can't tell which payment funded which accou
   vouchers collect       Collect vouchers for payments made since (same address, later
                          payments, or a buy you stopped waiting for).
   vouchers list          What this machine holds, and when it can be redeemed.
-  vouchers redeem        Deposit the vouchers into an account (asks for its API key, or
-                         set OBSCURIFY_API_KEY). Each voucher waits 5 to 60 minutes after
-                         it was collected, so the payment and the deposit can't be matched
-                         by time. --now skips the wait; --wait stays until all are in.
+  vouchers redeem        Deposit the vouchers into an account's balance. Asks which
+                         account: its API key (sk-obs1_...) or its account code (set
+                         OBSCURIFY_API_KEY or OBSCURIFY_ACCOUNT_CODE to skip the
+                         question). Each voucher waits 5 to 60 minutes after it was
+                         collected, so the payment and the deposit can't be matched by
+                         time. --now skips the wait; --wait stays until all are in.
 
 Affiliates
   affiliate collect [DOLLARS]
@@ -192,14 +194,24 @@ async function voucherCommand() {
   if (sub === 'redeem') {
     let s = vouchers.summary(ctx);
     if (!s.held_cents) { print('No vouchers to redeem.', { redeemed: 0 }); return; }
-    const key = await secret('OBSCURIFY_API_KEY', 'API key of the account to deposit into: ');
-    if (!key.startsWith('sk-obs1_')) fail('That is not an API key (sk-obs1_...).');
+    // Which account: its API key, or its account code (turned into the API key here;
+    // the code isn't sent). Either way the funds go on the account's balance.
+    const given = process.env.OBSCURIFY_API_KEY || process.env.OBSCURIFY_ACCOUNT_CODE
+      || await secret('OBSCURIFY_API_KEY', 'Account to deposit into (its API key or account code): ');
+    let key = given.trim();
+    if (!key.startsWith('sk-obs1_')) {
+      try {
+        key = (await client(api)('POST', '/generate_token', { account_key: loginKey(key) })).token;
+      } catch (e) {
+        fail(/account code|account number/.test(e.message) ? 'That is neither an API key (sk-obs1_...) nor an account code.' : e.message);
+      }
+    }
     if (flag('--now')) note('Redeeming now: the deposit can be matched to the payment by time.');
     let total = 0;
     for (;;) {
       const r = await vouchers.redeem(ctx, key, { now: flag('--now') });
       total += r.credited_usd;
-      if (r.redeemed) note(`Deposited $${r.credited_usd.toFixed(2)}${r.already_redeemed ? `, ${r.already_redeemed} already used` : ''}${r.invalid ? `, ${r.invalid} invalid` : ''}. Balance: $${Number(r.balance).toFixed(2)}`);
+      if (r.redeemed) note(`Deposited $${r.credited_usd.toFixed(2)} into the account${r.already_redeemed ? ` (${r.already_redeemed} voucher${r.already_redeemed === 1 ? ' was' : 's were'} already used)` : ''}${r.invalid ? ` (${r.invalid} invalid)` : ''}. Account balance: $${Number(r.balance).toFixed(2)}`);
       s = vouchers.summary(ctx);
       if (!s.held_cents || !flag('--wait')) break;
       note(`Waiting to deposit the next voucher ${when(s.next_ready_at)}...`);
