@@ -2,7 +2,7 @@
 // obscurify: the Obscurify jobs that have to run on your own machine.
 // Everything else is a plain API request: https://obscurify.ai/api-docs
 import { createInterface } from 'node:readline';
-import { newAccountCode, loginKey } from '../lib/account.mjs';
+import { newAccountCode, accountKey } from '../lib/account.mjs';
 import { client } from '../lib/http.mjs';
 import * as vouchers from '../lib/vouchers.mjs';
 
@@ -12,8 +12,13 @@ Account
   signup                 Make a new account. Prints its account code (what you sign in
                          with: keep it) and its API key (sk-obs1_...). The code is made
                          here and never sent.
-  api-key                Print the API key (sk-obs1_...) of an account you have. Asks for
-                         the account code; the code isn't sent.
+  api-key                Print the Default API key (sk-obs1_...) of an account you have.
+                         Asks for the account code; the code isn't sent.
+  api-key --name NAME    Make another API key, named (one per tool, say), and print it.
+                         It is shown once. Up to 25.
+  api-key --revoke ID    Stop one key working (its id from GET /api_keys, or "default"
+                         to replace the Default key). Your other keys keep working.
+                         List your keys and what each used: GET /api_keys with any key.
 
 Private deposits (blind vouchers: we can't tell which payment funded which account)
   vouchers buy [DOLLARS] --pay btc|lightning|xmr|eth|usdc|usdt [--network NAME]
@@ -53,7 +58,7 @@ Everything else: https://obscurify.ai/api-docs`;
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);
-const VALUE_OPTIONS = ['--api', '--pay', '--network'];
+const VALUE_OPTIONS = ['--api', '--pay', '--network', '--name', '--revoke'];
 const option = (name) => {
   const i = args.indexOf(name);
   return i >= 0 ? args[i + 1] : undefined;
@@ -113,7 +118,7 @@ async function signup() {
   const call = client(api);
   const code = newAccountCode();
   note('Making your account code (a few seconds)...');
-  const key = loginKey(code);
+  const key = accountKey(code);
   const made = await call('POST', '/create_account', { accept_tos: true, account_key: key });
   const { token } = await call('POST', '/generate_token', { account_key: key });
   print(`
@@ -130,10 +135,26 @@ Use the key with any OpenAI-compatible client: base URL ${api}/v1`,
 }
 
 async function apiKey() {
+  const name = option('--name');
+  const revoke = option('--revoke');
+  if (flag('--name') && !name) fail('--name needs a name, such as --name "Claude Code".');
+  if (flag('--revoke') && !revoke) fail('--revoke needs the key\'s id (GET /api_keys lists them).');
   const typed = await secret('OBSCURIFY_ACCOUNT_CODE', 'Account code: ');
   let key;
-  try { key = loginKey(typed); } catch (e) { fail(e.message); }
-  const { token } = await client(api)('POST', '/generate_token', { account_key: key });
+  try { key = accountKey(typed); } catch (e) { fail(e.message); }
+  const call = client(api);
+  if (revoke) {
+    const r = await call('POST', `/api_keys/${encodeURIComponent(revoke)}/revoke`, { account_key: key });
+    print(r.message, { revoked: true, id: revoke });
+    return;
+  }
+  if (name) {
+    const made = await call('POST', '/api_keys', { name, account_key: key });
+    note(`"${made.name}" (id ${made.id}). Save it now: it isn't shown again.`);
+    print(made.key, { api_key: made.key, id: made.id, name: made.name });
+    return;
+  }
+  const { token } = await call('POST', '/generate_token', { account_key: key });
   print(token, { api_key: token });
 }
 
@@ -201,7 +222,7 @@ async function voucherCommand() {
     let key = given.trim();
     if (!key.startsWith('sk-obs1_')) {
       try {
-        key = (await client(api)('POST', '/generate_token', { account_key: loginKey(key) })).token;
+        key = (await client(api)('POST', '/generate_token', { account_key: accountKey(key) })).token;
       } catch (e) {
         fail(/account code|account number/.test(e.message) ? 'That is neither an API key (sk-obs1_...) nor an account code.' : e.message);
       }

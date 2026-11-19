@@ -58,11 +58,11 @@ const made = JSON.parse(signup.out || '{}');
 check('signup makes an account', signup.code === 0 && /^[0-9A-Z]{5}(-[0-9A-Z]{5}){3}$/.test(made.account_code || ''), signup.out + signup.err);
 check('and gives its API key', /^sk-obs1_/.test(made.api_key || ''), signup.out);
 
-// 2. The code never left this machine; only a 64-hex login key did.
+// 2. The code never left this machine; only a 64-hex account key did.
 const code = made.account_code || 'none';
 const everything = sent.join('\n');
 check('the account code was never sent', !everything.includes(code) && !everything.includes(code.replace(/-/g, '')));
-check('only a login key was sent', /"account_key":"[0-9a-f]{64}"/.test(everything) && !everything.includes('account_number'), everything.slice(0, 300));
+check('only a account key was sent', /"account_key":"[0-9a-f]{64}"/.test(everything) && !everything.includes('account_number'), everything.slice(0, 300));
 
 // 3. The API key comes back from the code, however it's typed.
 for (const typed of [code, code.toLowerCase().replace(/-/g, ''), code.replace(/-/g, ' ')]) {
@@ -73,6 +73,19 @@ for (const typed of [code, code.toLowerCase().replace(/-/g, ''), code.replace(/-
 // 4. The key works on the API.
 const balance = await fetch(upstream + '/get_user_balance', { headers: { Authorization: `Bearer ${made.api_key}` } });
 check('the API key works', balance.ok, String(balance.status));
+
+// 4b. More keys: one named key made and revoked with the account code (never sent).
+const keyMark = sent.length;
+const named = await obscurify(['api-key', '--name', 'CLI test', '--json'], code + '\n');
+const namedKey = JSON.parse(named.out || '{}');
+check('api-key --name makes another key', named.code === 0 && /^sk-obs1_/.test(namedKey.api_key || '') && namedKey.api_key !== made.api_key, named.out + named.err);
+const namedWorks = async () => (await fetch(upstream + '/get_user_balance', { headers: { Authorization: `Bearer ${namedKey.api_key}` } })).ok;
+check('  it works', await namedWorks());
+const listed = await (await fetch(upstream + '/api_keys', { headers: { Authorization: `Bearer ${made.api_key}` } })).json();
+check('  and is listed by name', (listed.api_keys || []).some((k) => k.name === 'CLI test' && k.id === namedKey.id), JSON.stringify(listed).slice(0, 200));
+const revoked = await obscurify(['api-key', '--revoke', namedKey.id], code + '\n');
+check('api-key --revoke stops it', revoked.code === 0 && !(await namedWorks()), revoked.out + revoked.err);
+check('  the code was never sent', sent.slice(keyMark).every((r) => !r.includes(code) && !r.includes(code.replace(/-/g, ''))));
 
 // 5. A typo is caught here, before anything is sent.
 const before = sent.length;

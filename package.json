@@ -1,6 +1,6 @@
 {
   "name": "@obscurify/cli",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "The Obscurify jobs that run on your machine: sign up (your account code never leaves it), get your API key, deposit privately with blind vouchers, take affiliate credit.",
   "type": "module",
   "bin": {

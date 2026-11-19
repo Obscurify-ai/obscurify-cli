@@ -12,9 +12,11 @@ npx -y @obscurify/cli affiliate collect           # affiliate credit, as blind v
 
 ## Account
 
-`signup` makes a new account and prints its **account code** (what you sign in with) and its **API key** (`sk-obs1_...`). `api-key` asks for an account code and prints that account's API key; it takes the 16-digit numbers of older accounts too.
+`signup` makes a new account and prints its **account code** (what you sign in with) and its **API key** (`sk-obs1_...`). `api-key` asks for an account code and prints that account's Default API key; it takes the 16-digit numbers of older accounts too.
 
-The account code is made here and never sent anywhere. Obscurify only gets a one-way key made from it: Argon2id of the code (salt `obscurify-code-v1`, 64 MiB, 8 passes), then HMAC-SHA256 of the word `login`. That matters because your encrypted chat history is locked with keys made from the code, so not even Obscurify can open it. Making that key is the only reason this needs a tool: with the key, getting the API key is one `POST /generate_token`.
+An account can have more keys, one per tool say, each revocable on its own: `api-key --name "Claude Code"` makes one (shown once), and `api-key --revoke ID` stops one (ids and what each key used: `GET /api_keys` with any key). These need the account code, not an API key, so a leaked key can't make more.
+
+The account code is made here and never sent anywhere. Obscurify only gets its **account key**, a one-way key made from it: Argon2id of the code (salt `obscurify-code-v1`, 64 MiB, 8 passes), then HMAC-SHA256 of the word `login`. That matters because your encrypted chat history is locked with keys made from the code, so not even Obscurify can open it. Making the account key is the only reason this needs a tool: with it, getting the API key is one `POST /generate_token`.
 
 ## Private deposits
 
